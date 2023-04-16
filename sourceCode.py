@@ -44,8 +44,10 @@ class Block:
         self.hash = self.calculate_hash()
 
     def calculate_hash(self):
-        block_string = str(self.index) + str(self.timestamp) + str(self.transactions) + str(self.previous_hash) + str(self.nonce)
-        return hashlib.sha256(block_string.encode()).hexdigest()
+        data = f'{self.index}{self.timestamp}{self.transactions}{self.previous_hash}{self.nonce}'  # Include nonce in data
+        hash_object = hashlib.sha256(data.encode())
+        hash_hex = hash_object.hexdigest()
+        return hash_hex
 
 class Blockchain:
     def __init__(self):
@@ -68,13 +70,21 @@ class Blockchain:
         self.transactions = []
 
     def encrypt(self, data):
-      data_bytes = data.encode('utf-8')
-      encoded_data = base64.b64encode(data_bytes)
-      return encoded_data
+      try:
+        data_bytes = data.encode('utf-8')
+        encoded_data = base64.b64encode(data_bytes)
+        return encoded_data
+      except Exception as e:
+        print(f'Encryption failed: {e}')
+        return None
 
     def decrypt(self, data):
-        decoded_data = base64.urlsafe_b64decode(data).decode("utf-8")
-        return decoded_data
+        try:
+          decoded_data = base64.b64decode(data.encode()).decode("utf-8")
+          return decoded_data
+        except Exception as e:
+          print(f'Decryption failed: {e}')
+          return None
 
     def addPeer(self, peer):
         self.peer.append(peer)
@@ -112,7 +122,7 @@ def generate():
     run = True
     while run == True:
       x = random.randint(100, 450)
-      y = random.randint(50, 608)
+      y = random.randint(50, 600)
       flag = calculateDistance(iot_x,iot_y,x,y)
       if flag == False:
         iot_x.append(x)
@@ -121,7 +131,7 @@ def generate():
         name = canvas.create_oval(x,y,x+40,y+40, fill="red")
         lbl = canvas.create_text(x+20,y-10,fill="darkblue",font="Times 8 italic bold", text="I0T "+str(i))
         labels.append(lbl)
-        iot.append (name)
+        iot.append(name)
 
 def SWBCThread(propose,running_time):
   class RunThread(Thread):
@@ -161,7 +171,7 @@ def SWBCThread(propose,running_time):
           count = 'IoT'+str(iotID)+","+str(random.randint(25,45))
           text.insert (END, "Generated Data : "+count+"\n")
           enc = blockchain.encrypt(count)
-          enc = str(base64.b64encode(enc), 'utf-8')
+          enc = str(base64.b64encode(enc), 'utf-8') # type: ignore
           text.insert(END,"AES encrypted data : "+enc+". Mining pending will done after 10 blocks\n")
           blockchain.addPeer(enc)
           self.propose = self.propose + 1
@@ -169,7 +179,7 @@ def SWBCThread(propose,running_time):
             for k in range(len(blockchain.peer)):
               if len(blockchain.chain) == window_limit:
                 blck = blockchain.chain.pop(0)
-                name = time.strftime("%d-%m-%Y-%H-EM-%5") + "txt" 
+                name = time.strftime("%d-%m-%Y-%H-%M-%S") + "txt" 
                 with open('remove/remove_'+str(index)+' '+name, 'wb') as output:
                   pickle.dump(blck, output, pickle.HIGHEST_PROTOCOL)
                 index = index + 1
@@ -180,23 +190,23 @@ def SWBCThread(propose,running_time):
               finishtime = time.time()
               self.running_time = self.running_time + (finishtime - starttime)
           blockchain.peer.clear()
-          text.insert (END, 'Mining done and saved recent blocks to BC DB.txt file\n')
+          text.insert(END, 'Mining done and saved recent blocks to BC DB.txt file\n')
           time.sleep(1)
           canvas.delete(labels[iotID])
           lbl = canvas.create_text(x+20,y-10,fill="darkblue",font="Times 10 italic bold", text="I0T "+str(iotID))
           labels[iotID] = lbl
           output = '<html><body><center><br/><br/><table align=center border=1><tr><th>Encrypted Packet</th><th>Decrypted Packet</th>'
           output+='<th>Previous Hash</th><th>Packet Index</th><th>Current Hash</th><th>Timestamp</th></tr>'
-          for i in range(len(blockchain.chain)):
-            if i>0:
-              b = blockchain.chain[i]
-              data = b.transactions[0]
-              data = base64.b64decode(data)
-              decrypt = blockchain.decrypt(data)
-              text.insert(END,str(data)+" "+str(decrypt)+" "+str(b.previous_hash)+" "+str(b.index)+" "+str(b.hash)+" "+str(datetime.datetime.fromtimestamp(b.timestamp)))
-              print(str(data)+" "+str(decrypt)+" "+str(b.previous_hash)+" "+str(b.index)+" "+str(b.hash)+" "+str(datetime.datetime.fromtimestamp(b.timestamp)))
-              output+='<tr><td>'+str(data)+'</td><td>'+str(decrypt)+'</td><td>'+str(b.previous_hash)+'</td>'
-              output+='<td>'+str(b.index)+'</td><td>'+str(b.hash)+'</td><td>'+str(datetime.datetime.fromtimestamp(b.timestamp))+'</td></tr>'
+          for j in range(len(blockchain.chain)):
+              if i >= 0:
+                b = blockchain.chain[j]
+                data = b.transactions[0]
+                # data = base64.b64decode(data)
+                decrypt = (data)
+                text.insert(END,str(data)+" "+str(decrypt)+" "+str(b.previous_hash)+" "+str(b.index)+" "+str(b.hash)+" "+str(b.timestamp))
+                print(str(data)+" "+str(decrypt)+" "+str(b.previous_hash)+" "+str(b.index)+" "+str(b.hash)+" "+str(b.timestamp))
+                output+='<tr><td>'+str(data)+'</td><td>'+str(decrypt)+'</td><td>'+str(b.previous_hash)+'</td>'
+                output+='<td>'+str(b.index)+'</td><td>'+str(b.hash)+'</td><td>'+str(b.timestamp)+'</td></tr>'
           canvas.delete(labels[0])
           x = iot_x[0]
           y = iot_y[0]
@@ -212,7 +222,7 @@ def SWBCThread(propose,running_time):
           f = open("propose.txt", "w")
           f.write(str(self.propose))
           f.close()
-          webbrowser.open("table.html",new=2)
+          webbrowser.open("http://localhost:5500/table.html", new=0)
   newthread = RunThread(propose, running_time)
   newthread.start()
 
@@ -262,7 +272,7 @@ def SWBCExtensionThread(extension):
           count = 'IoT'+str(iotID)+","+str(value)
           text.insert(END, "Generated Data : "+count+"\n")
           enc = blockchain.encrypt(count) #encryting data
-          enc = str(base64.b64decode(enc), 'utf-8')
+          enc = str(base64.b64decode(enc), 'utf-8') # type: ignore
           text.insert(END, "AES encrypted data : "+enc+". Mining pending will done after 10 blocks\n")
           blockchain.addPeer(enc) #adding data to block chain
           self.extension = self.extension + 1
